@@ -11,6 +11,21 @@ importers:
       '@helia/verified-fetch':
         specifier: ^2.6.4
         version: 2.6.4(react-native@0.79.0(@babel/core@7.26.10)(react@19.1.0))
+      '@libp2p/bootstrap':
+        specifier: ^11.0.33
+        version: 11.0.33
+      '@libp2p/webrtc':
+        specifier: ^5.2.10
+        version: 5.2.10(react-native@0.79.0(@babel/core@7.26.10)(react@19.1.0))
+      '@libp2p/websockets':
+        specifier: ^9.2.9
+        version: 9.2.9
+      '@multiformats/multiaddr':
+        specifier: ^12.4.0
+        version: 12.4.0
+      helia:
+        specifier: ^5.3.0
+        version: 5.3.0(react-native@0.79.0(@babel/core@7.26.10)(react@19.1.0))
     devDependencies:
       typescript:
         specifier: ^5.8.3

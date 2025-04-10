@@ -1,7 +1,126 @@
-import { verifiedFetch } from "@helia/verified-fetch";
+import { createVerifiedFetch } from "@helia/verified-fetch";
+import { createHelia, type Helia } from "helia";
+import { bootstrap } from "@libp2p/bootstrap";
+import { webSockets } from "@libp2p/websockets";
+import { multiaddr } from "@multiformats/multiaddr";
+import { webRTC } from "@libp2p/webrtc";
+// import { circuitRelayTransport } from "@libp2p/circuit-relay";
 
+export const FLUORINE_WEBSOCKETS =
+	"/dns4/15-235-14-184.k51qzi5uqu5dj2rauyi7u92l2sldj7dkdhn18f4qccfvcyeca4ym7cveuv4qjl.libp2p.direct/tcp/4001/tls/ws/p2p/12D3KooWHdZM98wcuyGorE184exFrPEJWv2btXWWSHLQaqwZXuPe";
+
+export const BISMUTH_WEBSOCKETS =
+	"/dns4/40-160-21-102.k51qzi5uqu5dhy22gw9bhnr0ouwxub8ct5awrlfm3l698aj0gekrexa4g0epau.libp2p.direct/tcp/4001/tls/ws/p2p/12D3KooWEaVCpKd2MgZeLugvwCWRSQAMYWdu6wNG6SySQsgox8k5";
+
+export const CERIUM_WEBSOCKETS =
+	"/dns4/15-235-86-198.k51qzi5uqu5dinxpj5iu3anaalt5ea7g0iy8al2bzejnljokrdy8hjp4cl4410.libp2p.direct/tcp/4001/tls/ws/p2p/12D3KooWGX5HDDjbdiJL2QYf2f7Kjp1Bj6QAXR5vFvLQniTKwoBR";
+
+/**
+ * Function to connect helia node to the cluster nodes that have dclimate data
+ * @param node helia node used to connect to the cluster
+ */
+const connectToCluster = async (node) => {
+	try {
+		const connectionFluorine = await dialWithAbortSignal(
+			node,
+			FLUORINE_WEBSOCKETS,
+		);
+		console.log(
+			"Successfully connected to Fluorine node:",
+			connectionFluorine.remotePeer.toString(),
+		);
+
+		const connectionBismuth = await dialWithAbortSignal(
+			node,
+			BISMUTH_WEBSOCKETS,
+		);
+		console.log(
+			"Successfully connected to Bismuth node:",
+			connectionBismuth.remotePeer.toString(),
+		);
+
+		const connectionCerium = await dialWithAbortSignal(node, CERIUM_WEBSOCKETS);
+		console.log(
+			"Successfully connected to Cerium node:",
+			connectionCerium.remotePeer.toString(),
+		);
+	} catch (error) {
+		console.warn("Failed to connect to target peer:", error);
+	}
+};
+
+/**
+ * Function to dial to a peer with a abort signal
+ * @param node node used to dial
+ * @param multiaddressString multiaddress of the peer to dial
+ * @returns connection to the peer
+ */
+const dialWithAbortSignal = async (node, multiaddressString) => {
+	// Create an abort controller with a longer timeout
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => {
+		controller.abort(new Error("Connection attempt timed out"));
+	}, 60000); // 60 seconds timeout
+
+	try {
+		const addr = multiaddr(multiaddressString);
+
+		const connection = await node.libp2p.dial(addr, {
+			signal: controller.signal,
+		});
+
+		// Clear the timeout if connection is successful
+		clearTimeout(timeoutId);
+
+		console.log("Connection established:", {
+			remotePeer: connection.remotePeer.toString(),
+			status: connection.status,
+		});
+
+		return connection;
+	} catch (error) {
+		// Clear the timeout to prevent memory leaks
+		clearTimeout(timeoutId);
+
+		console.error("Dial attempt failed:", {
+			errorName: error.name,
+			errorMessage: error.message,
+			stack: error.stack,
+		});
+
+		// Provide more context for common error types
+		if (error.name === "AbortError") {
+			console.warn(
+				"Connection attempt was aborted. Possible reasons:",
+				"- Network connectivity issues",
+				"- Target peer is unreachable",
+				"- Connection took too long to establish",
+			);
+		}
+
+		throw error;
+	}
+};
+
+let verifiedFetch: ReturnType<typeof createVerifiedFetch>;
+let helia: Helia;
 async function runDemo() {
 	try {
+		helia = await createHelia({
+			libp2p: {
+				transport: [webSockets(), webRTC()],
+				peerDiscovery: [
+					bootstrap({
+						list: [FLUORINE_WEBSOCKETS, BISMUTH_WEBSOCKETS, CERIUM_WEBSOCKETS],
+						timeout: 30000, // Increased timeout
+						tagName: "cluster-peer",
+					}),
+				],
+			},
+		});
+		await connectToCluster(helia);
+		verifiedFetch = await createVerifiedFetch(helia);
+
 		const response = await verifiedFetch(
 			"ipns://k51qzi5uqu5dk89atnl883sr0g1cb2py631ckz9ng45qhk6dg0pj141jtxtx6l",
 		);
