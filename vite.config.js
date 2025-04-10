@@ -1,5 +1,5 @@
 export default {
-	base: "/stac/",
+	base: "/",
 	server: {
 		port: 3000,
 		open: true,
