@@ -1,10 +1,10 @@
-import { createVerifiedFetch } from "@helia/verified-fetch";
-import { createHelia, type Helia } from "helia";
+import { createVerifiedFetch, type VerifiedFetch } from "@helia/verified-fetch";
+import { createHelia } from "helia";
 import { bootstrap } from "@libp2p/bootstrap";
 import { webSockets } from "@libp2p/websockets";
 import { multiaddr } from "@multiformats/multiaddr";
 import { webRTC } from "@libp2p/webrtc";
-// import { circuitRelayTransport } from "@libp2p/circuit-relay";
+import { circuitRelayTransport } from "@libp2p/circuit-relay-v2";
 
 export const FLUORINE_WEBSOCKETS =
 	"/dns4/15-235-14-184.k51qzi5uqu5dj2rauyi7u92l2sldj7dkdhn18f4qccfvcyeca4ym7cveuv4qjl.libp2p.direct/tcp/4001/tls/ws/p2p/12D3KooWHdZM98wcuyGorE184exFrPEJWv2btXWWSHLQaqwZXuPe";
@@ -19,7 +19,7 @@ export const CERIUM_WEBSOCKETS =
  * Function to connect helia node to the cluster nodes that have dclimate data
  * @param node helia node used to connect to the cluster
  */
-const connectToCluster = async (node) => {
+const connectToCluster = async (node: any) => {
 	try {
 		const connectionFluorine = await dialWithAbortSignal(
 			node,
@@ -55,7 +55,7 @@ const connectToCluster = async (node) => {
  * @param multiaddressString multiaddress of the peer to dial
  * @returns connection to the peer
  */
-const dialWithAbortSignal = async (node, multiaddressString) => {
+const dialWithAbortSignal = async (node: any, multiaddressString: string) => {
 	// Create an abort controller with a longer timeout
 	const controller = new AbortController();
 	const timeoutId = setTimeout(() => {
@@ -78,18 +78,18 @@ const dialWithAbortSignal = async (node, multiaddressString) => {
 		});
 
 		return connection;
-	} catch (error) {
+	} catch (error: unknown) {
 		// Clear the timeout to prevent memory leaks
 		clearTimeout(timeoutId);
 
 		console.error("Dial attempt failed:", {
-			errorName: error.name,
-			errorMessage: error.message,
-			stack: error.stack,
+			errorName: error instanceof Error ? error.name : "Unknown",
+			errorMessage: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : "No stack trace",
 		});
 
 		// Provide more context for common error types
-		if (error.name === "AbortError") {
+		if (error instanceof Error && error.name === "AbortError") {
 			console.warn(
 				"Connection attempt was aborted. Possible reasons:",
 				"- Network connectivity issues",
@@ -102,13 +102,13 @@ const dialWithAbortSignal = async (node, multiaddressString) => {
 	}
 };
 
-let verifiedFetch: ReturnType<typeof createVerifiedFetch>;
-let helia: Helia;
+let verifiedFetchFn: VerifiedFetch;
+let helia: any;
 async function runDemo() {
 	try {
 		helia = await createHelia({
 			libp2p: {
-				transport: [webSockets(), webRTC()],
+				transports: [webSockets(), webRTC(), circuitRelayTransport()],
 				peerDiscovery: [
 					bootstrap({
 						list: [FLUORINE_WEBSOCKETS, BISMUTH_WEBSOCKETS, CERIUM_WEBSOCKETS],
@@ -119,9 +119,9 @@ async function runDemo() {
 			},
 		});
 		await connectToCluster(helia);
-		verifiedFetch = await createVerifiedFetch(helia);
+		verifiedFetchFn = await createVerifiedFetch(helia);
 
-		const response = await verifiedFetch(
+		const response = await verifiedFetchFn(
 			"ipns://k51qzi5uqu5dk89atnl883sr0g1cb2py631ckz9ng45qhk6dg0pj141jtxtx6l",
 		);
 
@@ -223,7 +223,7 @@ async function fetchAndDisplayIpfsContent(ipfsUrl: string) {
 	try {
 		document.body.innerHTML = "<p>Loading content from IPFS...</p>";
 
-		const response = await verifiedFetch(ipfsUrl);
+		const response = await verifiedFetchFn(ipfsUrl);
 
 		// Try to parse as JSON first
 		try {

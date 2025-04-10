@@ -21,6 +21,7 @@
 	"dependencies": {
 		"@helia/verified-fetch": "^2.6.4",
 		"@libp2p/bootstrap": "^11.0.33",
+		"@libp2p/circuit-relay-v2": "^3.2.9",
 		"@libp2p/webrtc": "^5.2.10",
 		"@libp2p/websockets": "^9.2.9",
 		"@multiformats/multiaddr": "^12.4.0",
