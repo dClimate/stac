@@ -46,9 +46,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Clear Vite Cache (if exists)
-        run: rm -rf node_modules/.vite || true # Use '|| true' to avoid error if dir doesn't exist
-
       - name: Build
         run: pnpm build
         
