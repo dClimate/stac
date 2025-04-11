@@ -169,7 +169,7 @@ async function runDemo() {
 		verifiedFetchFn = await createVerifiedFetch(helia);
 
 		const response = await verifiedFetchFn(
-			"ipns://k51qzi5uqu5dk89atnl883sr0g1cb2py631ckz9ng45qhk6dg0pj141jtxtx6l",
+			"ipfs://baguqeeraxym2g5iaecqzqc6uekitjaxn47dncq3o2mt36wqbqjt2q3ci42dq",
 		);
 
 		const results = await response.json();
