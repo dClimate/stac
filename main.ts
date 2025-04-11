@@ -2,7 +2,10 @@ import { createVerifiedFetch, type VerifiedFetch } from "@helia/verified-fetch";
 import { createHelia } from "helia";
 import { bootstrap } from "@libp2p/bootstrap";
 import { webSockets } from "@libp2p/websockets";
-import { multiaddr } from "@multiformats/multiaddr";
+import { ConnectionGater } from "@libp2p/interface";
+import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
+import { bitswap } from "@helia/block-brokers";
+import { WebSockets } from "@multiformats/multiaddr-matcher";
 import { webRTC } from "@libp2p/webrtc";
 import { circuitRelayTransport } from "@libp2p/circuit-relay-v2";
 
@@ -102,6 +105,48 @@ const dialWithAbortSignal = async (node: any, multiaddressString: string) => {
 	}
 };
 
+export function connectionGater(gater: ConnectionGater = {}): ConnectionGater {
+    return {
+        denyDialPeer: async () => false,
+        denyDialMultiaddr: async (multiaddress: Multiaddr) => {
+            // do not connect to insecure websockets by default
+            if (WebSockets.matches(multiaddress)) {
+                return false;
+            }
+
+            // check if it matches with FLUORINE_WEBSOCKETS, BISMUTH_WEBSOCKETS or CERIUM_WEBSOCKETS
+            if (multiaddress.toString() === FLUORINE_WEBSOCKETS) {
+                return false;
+            }
+            if (multiaddress.toString() === BISMUTH_WEBSOCKETS) {
+                return false;
+            }
+            if (multiaddress.toString() === CERIUM_WEBSOCKETS) {
+                return false;
+            }
+            // Deny everything else
+            return true;
+
+            // const tuples = multiaddress.stringTuples();
+
+            // // do not connect to private addresses by default
+            // if (tuples[0][0] === CODEC_IP4 || tuples[0][0] === CODEC_IP6) {
+            //     return Boolean(isPrivateIp(`${tuples[0][1]}`));
+            // }
+
+            // return false;
+        },
+        denyInboundConnection: async () => false,
+        denyOutboundConnection: async () => false,
+        denyInboundEncryptedConnection: async () => false,
+        denyOutboundEncryptedConnection: async () => false,
+        denyInboundUpgradedConnection: async () => false,
+        denyOutboundUpgradedConnection: async () => false,
+        filterMultiaddrForPeer: async () => true,
+        ...gater,
+    };
+}
+
 let verifiedFetchFn: VerifiedFetch;
 let helia: any;
 async function runDemo() {
@@ -116,13 +161,15 @@ async function runDemo() {
 						tagName: "cluster-peer",
 					}),
 				],
+				connectionGater: connectionGater(),
 			},
+			blockBrokers: [bitswap()],
 		});
 		await connectToCluster(helia);
 		verifiedFetchFn = await createVerifiedFetch(helia);
 
 		const response = await verifiedFetchFn(
-			"ipns://k51qzi5uqu5dk89atnl883sr0g1cb2py631ckz9ng45qhk6dg0pj141jtxtx6l",
+			"ipfs://baguqeeraxym2g5iaecqzqc6uekitjaxn47dncq3o2mt36wqbqjt2q3ci42dq",
 		);
 
 		const results = await response.json();
